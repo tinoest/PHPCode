@@ -10,7 +10,17 @@ do {
 	if($ret == "\n") {
 		if($debug) echo "RX: ".$result.PHP_EOL;
 		$data		= xml2array($result);
-		var_export($data);		
+		$data		= $data['xml'];
+		if(array_key_exists('tmpr',$data)) {
+			var_export($data);		
+			$conn 	= pg_connect("dbname=monitoring user=monitoring password=m0n1t0r1ng");	
+			$sql 		= "INSERT INTO raw_data ( log_dt , tmpr , batt , node ) VALUES ( NOW() , {$data['tmpr'][0]} , {$data['v'][0]} , {$data['n'][0]} );";
+			$result = pg_query($conn, $sql);
+			if (!$result) {
+							echo "An error occurred.\n";
+			}
+			pg_close($conn);
+		}
 		$result = '';
 	} 
 	else {
