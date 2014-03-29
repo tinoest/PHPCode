@@ -1,6 +1,7 @@
 #!/usr/bin/php
  
 <?php
+require_once('config.php');
 declare(ticks = 1);
 
 // signal handler function
@@ -52,7 +53,7 @@ else{
 			$data   = xml2array($result);
 			$data   = $data['xml'];
 			if(array_key_exists('tmpr',$data)) {
-				$conn   = pg_connect("dbname=monitoring user=monitoring password=m0n1t0r1ng");
+				$conn   = pg_connect("dbname=$database user=$user password=$password");
 				$sql    = "INSERT INTO raw_data ( log_dt , tmpr , batt , node ) VALUES ( NOW() , {$data['tmpr'][0]} , {$data['v'][0]} , {$data['n'][0]} );";
 				$result = pg_query($conn, $sql);
 				if (!$result) {
