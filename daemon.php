@@ -49,7 +49,7 @@ else{
 	for(;;) { 
 		$ret = dio_read($fd, 1);
 		if($ret == "\n") {
-			if($debug) syslog(LOG_DEBUG, "RX: ".$result.PHP_EOL);
+			if($debug) syslog(LOG_DEBUG, "RX: ".$result.PHP_EOL); // <xml><n>8</n><c>140</c><tmpr>16</tmpr><v>2880</v></xml>
 			$data   = xml2array($result);
 			$data   = $data['xml'];
 			if(array_key_exists('tmpr',$data)) {
