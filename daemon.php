@@ -1,7 +1,6 @@
 #!/usr/bin/php
  
 <?php
-require_once('config.php');
 declare(ticks = 1);
 
 // signal handler function
@@ -49,12 +48,15 @@ else{
 	for(;;) { 
 		$ret = dio_read($fd, 1);
 		if($ret == "\n") {
-			if($debug) syslog(LOG_DEBUG, "RX: ".$result.PHP_EOL); // <xml><n>8</n><c>140</c><tmpr>16</tmpr><v>2880</v></xml>
+			if($debug) syslog(LOG_DEBUG, "RX: ".$result.PHP_EOL);
 			$data   = xml2array($result);
 			$data   = $data['xml'];
 			if(array_key_exists('tmpr',$data)) {
+				if(!array_key_exists('h',$data)) {
+					$data['h'][0] = 0;
+				}
 				$conn   = pg_connect("dbname=$database user=$user password=$password");
-				$sql    = "INSERT INTO raw_data ( log_dt , tmpr , batt , node ) VALUES ( NOW() , {$data['tmpr'][0]} , {$data['v'][0]} , {$data['n'][0]} );";
+				$sql    = "INSERT INTO raw_data ( log_dt , tmpr , batt , node , humidty ) VALUES ( NOW() , {$data['tmpr'][0]} , {$data['v'][0]} , {$data['n'][0]} , {$data['h'][0]} );";
 				$result = pg_query($conn, $sql);
 				if (!$result) {
 					syslog(LOG_WARNING, "Database Error Occurred ".pg_last_error($conn));
