@@ -31,66 +31,10 @@ function fork_child($parent) {{{
 	}
 	else{
 		// we are the child
-		return $pid;
+		return;
 	}
 
 }}}
-
-date_default_timezone_set('UTC');
-
-$path = '/tmp/img';
-
-fork_child(FALSE);
-// We are the child...loop forever
-fclose(STDIN);  // Close all of the standard 
-fclose(STDOUT); // file descriptors as we 
-fclose(STDERR); // are running as a daemon. 
-set_time_limit (0);
-
-
-// setup signal handlers
-pcntl_signal(SIGTERM, "sig_handler");
-
-$timeout = 1;
-
-openlog("mySocketServer", LOG_PID|LOG_ODELAY , LOG_LOCAL3);
-$server = stream_socket_server("tcp://0.0.0.0:80", $errno, $errstr);
-if (!$server) {
-	syslog(LOG_WARNING, "Socket Error Occurred Error Number ".$errno);
-} else {
-	for($c=0;$c<10;$c++) $childPid[$c] = FALSE; // prepopulate array with false
-	for(;;) { // Loop forever
-		$socket = @stream_socket_accept($server, $timeout);
-		if($socket) {
-			for($c=0;$c<10;$c++) { 
-				if($childPid[$c] == FALSE) { 
-					$childPid[$c] = fork_child(TRUE);
-					if($childPid[$c] == 0) { 
-						handle_request($socket);
-						exit;
-					} else { 
-						syslog(LOG_INFO,"Created Child {$childPid[$c]}");
-						break;
-					}
-				} 
-			}
-		}
-		for($c=0;$c<10;$c++) { 
-			if($childPid[$c] != FALSE) { 
-				syslog(LOG_INFO,"Checking Child Complete {$childPid[$c]}");
-				$res = pcntl_waitpid($childPid[$c], $status, WNOHANG);
-				// If the process has already exited
-				if($res == -1 || $res > 0) { 
-					syslog(LOG_INFO,"Child Complete {$childPid[$c]}");
-					$childPid[$c] = FALSE;
-				}
-			}
-		}
-		usleep(1);
-	}
-	closelog();
-	stream_socket_shutdown($server, STREAM_SHUT_RDWR);
-}
 
 function handle_request($socket) {{{ 
 			global $path;
@@ -144,5 +88,74 @@ function handle_request($socket) {{{
 			stream_socket_shutdown($socket, STREAM_SHUT_RDWR);
 			return;
 }}}
+
+date_default_timezone_set('UTC');
+
+$path = '/tmp/img';
+
+fork_child(FALSE);
+// We are the child...loop forever
+fclose(STDIN);  // Close all of the standard 
+fclose(STDOUT); // file descriptors as we 
+fclose(STDERR); // are running as a daemon. 
+set_time_limit (0);
+
+
+// setup signal handlers
+pcntl_signal(SIGTERM, "sig_handler");
+
+$timeout = 1;
+
+openlog("mySocketServer", LOG_PID|LOG_ODELAY , LOG_LOCAL3);
+$server = stream_socket_server("tcp://0.0.0.0:8000", $errno, $errstr);
+if (!$server) {
+	syslog(LOG_WARNING, "Socket Error Occurred Error Number ".$errno);
+} else {
+	for($c=0;$c<10;$c++) $childPid[$c] = FALSE; // prepopulate array with false
+	for(;;) { // Loop forever
+		$socket = @stream_socket_accept($server, $timeout);
+		if($socket) {
+			for($c=0;$c<2;$c++) { 
+				if($childPid[$c] == FALSE) { 
+					$childPid[$c] = fork_child(TRUE);
+					if($childPid[$c] == 0) { 
+						$status			= FALSE;
+						$sharedId		= shmop_open(getmypid(),"c",0644,strlen($status));
+						$status			= TRUE;
+						shmop_write($sharedId,$status,0);
+						handle_request($socket);
+						$status			= FALSE;
+						shmop_write($sharedId,$status,0);
+						exit;
+					} else { 
+						$sharedId			= shmop_open($childPid[$c],"a",0,0);
+						$childStatus	= shmop_read($sharedId,0,shmop_size($sharedId));
+						syslog(LOG_INFO,"Created Child {$childPid[$c]} Status $childStatus");
+						break;
+					}
+				} 
+			}
+		}
+		for($c=0;$c<2;$c++) { 
+			if($childPid[$c] != FALSE) { 
+				syslog(LOG_INFO,"Checking Child Complete {$childPid[$c]}");
+				$res = pcntl_waitpid($childPid[$c], $status, WNOHANG);
+				// If the process has already exited
+				if($res == -1 || $res > 0) { 
+					$sharedId			= shmop_open($childPid[$c],"a",0,0);
+					$childStatus	= shmop_read($sharedId,0,shmop_size($sharedId));
+					syslog(LOG_INFO,"Child Complete {$childPid[$c]} Status $childStatus");
+					shmop_delete($sharedId);
+          shmop_close($sharedId);
+					$childPid[$c] = FALSE;
+				}
+			}
+		}
+		usleep(1);
+	}
+	closelog();
+	stream_socket_shutdown($server, STREAM_SHUT_RDWR);
+}
+
 
 ?>
