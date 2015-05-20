@@ -19,7 +19,7 @@ function sig_handler($signo) {{{
 
 function fork_child($parent) {{{
 
-	if(file_exists('/var/run/socketServer.pid')) {
+	if($parent == FALSE && file_exists('/var/run/socketServer.pid')) {
 		die("Socket Server Running");
 	}
 
