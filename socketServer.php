@@ -3,11 +3,22 @@
 // signal handler function
 function sig_handler($signo) {{{
 
+	global $parent, $childPid;
+
 	switch ($signo) {
 		case SIGTERM:
 			syslog(LOG_WARNING,"SIGTERM called, closing Socket Server");
-			unlink('/var/run/socketServer.pid');
-			closelog();
+			if($parent) {
+				unlink('/var/run/socketServer.pid');
+				for($c=0;$c<10;$c++) {
+					if($childPid[$c] != FALSE) {
+						syslog(LOG_WARNING,"Sending SIGTERM to Child {$childPid[$c]}");
+						posix_kill($childPid[$c], SIGTERM);
+						$childPid[$c] = FALSE; 
+					}
+				}
+				closelog();
+			}
 			// handle shutdown tasks
 			exit;
 			break;
@@ -38,7 +49,7 @@ function fork_child($parent) {{{
 	}
 	else {
 		// we are the child
-		return;
+		return 0;
 	}
 
 }}}
@@ -96,10 +107,27 @@ function handle_request($socket) {{{
 			return;
 }}}
 
+function child_process($server) {{{
+
+	$timeout = 1;
+	// setup signal handlers
+	pcntl_signal(SIGTERM, "sig_handler");
+
+	for(;;) {
+		pcntl_signal_dispatch(); // remember to call the signal dispatch to see if we have any waiting signals
+		$socket = @stream_socket_accept($server, $timeout);
+		if($socket) {
+			handle_request($socket);
+		}
+		usleep(1); 
+	}
+
+}}}
+
 date_default_timezone_set('UTC');
 
-$path = '/img';
-
+$path		= '/img';
+$parent = TRUE;
 fork_child(FALSE);
 // We are the child...loop forever
 
@@ -117,8 +145,6 @@ chdir("/");
 // setup signal handlers
 pcntl_signal(SIGTERM, "sig_handler");
 
-$timeout = 1;
-
 openlog("mySocketServer", LOG_PID|LOG_ODELAY , LOG_LOCAL3);
 $server = stream_socket_server("tcp://0.0.0.0:8000", $errno, $errstr);
 if (!$server) {
@@ -126,47 +152,31 @@ if (!$server) {
 } else {
 	for($c=0;$c<10;$c++) $childPid[$c] = FALSE; // prepopulate array with false
 	for(;;) { // Loop forever
+
 		pcntl_signal_dispatch(); // remember to call the signal dispatch to see if we have any waiting signals
-		$socket = @stream_socket_accept($server, $timeout);
-		if($socket) {
-			for($c=0;$c<2;$c++) { 
-				if($childPid[$c] == FALSE) { 
-					$childPid[$c] = fork_child(TRUE);
-					if($childPid[$c] == 0) { 
-						$status			= "1";
-						$sharedId		= shmop_open(getmypid(),"c",0644,strlen($status));
-						$status			= "2";
-						shmop_write($sharedId,$status,0);
-						handle_request($socket);
-						$status			= "3";
-						shmop_write($sharedId,$status,0);
-						exit;
-					} else {
-						sleep(1); 
-						$sharedId			= shmop_open($childPid[$c],"a",0,0);
-						$childStatus	= shmop_read($sharedId,0,shmop_size($sharedId));
-						syslog(LOG_INFO,"Created Child {$childPid[$c]} SharedID {$sharedId} Status $childStatus");
-						break;
-					}
-				} 
-			}
-		}
+		// fork the children 
 		for($c=0;$c<2;$c++) { 
-			if($childPid[$c] != FALSE) { 
-				syslog(LOG_INFO,"Checking Child Complete {$childPid[$c]}");
+			if($childPid[$c] == FALSE) {
+				$childPid[$c] = fork_child(TRUE);
+				if($childPid[$c] == 0) { 
+					child_process($server);
+					$parent = FALSE;
+				}
+				else {
+					syslog(LOG_INFO,"Created Child {$childPid[$c]}");
+				}
+			} 
+			else { 
+				//syslog(LOG_INFO,"Checking Child {$childPid[$c]}");
 				$res = pcntl_waitpid($childPid[$c], $stat, WNOHANG);
 				// If the process has already exited
 				if($res == -1 || $res > 0) { 
-					$sharedId			= shmop_open($childPid[$c],"a",0,0);
-					$childStatus	= shmop_read($sharedId,0,shmop_size($sharedId));
-					syslog(LOG_INFO,"Child Complete {$childPid[$c]} Status $childStatus");
-					shmop_delete($sharedId);
-          shmop_close($sharedId);
+					syslog(LOG_INFO,"Child {$childPid[$c]} Status $res");
 					$childPid[$c] = FALSE;
 				}
 			}
 		}
-		usleep(1);
+		sleep(1);
 	}
 	closelog();
 	stream_socket_shutdown($server, STREAM_SHUT_RDWR);
