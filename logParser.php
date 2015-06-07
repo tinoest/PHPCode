@@ -1,5 +1,23 @@
 #!/usr/bin/php
 <?php
+// signal handler function
+function sig_handler($signo) {{{
+
+	global $handle;
+
+	switch ($signo) {
+		case SIGTERM:
+				// handle shutdown tasks
+				unlink('/var/run/logParser.pid');
+				fclose($handle);
+				closelog();
+			exit;
+			break;
+		default:
+			// handle all other signals
+	}
+
+}}}
 
 $logFile		= '/var/log/Daemon.log';
 $delimiter	= "\n";
@@ -37,6 +55,7 @@ else{
 	$oldSize		= 0;
 	$handle			= fopen($logFile,'r');
 
+	openlog("myLogParser", LOG_PID|LOG_ODELAY , LOG_LOCAL3);
 	// loop forever
 	for (;;) {
 
@@ -47,7 +66,10 @@ else{
 		} else {
 			$count = preg_match_all($pattern, $line, $matches);
 			if($count > 0 )	{
-				smtp_mail('a@email.com','Error Found',$line);
+				$mail = new SMTPSend();
+				$mail->smtp_mail('admin@mail.com','Error Found',$line);
+				$mail->close();
+				unset($mail);
 			}
 		}
 
@@ -55,6 +77,7 @@ else{
 		clearstatcache();
 		$size = filesize($logFile);
 		if($oldSize > $size) {
+			syslog(LOG_ERR,"Oldsize $oldSize Size $size".PHP_EOL);
 			// We must of rotated close the handle and open a new one
 			fclose($handle);
 			$handle		= fopen($logFile,'r');			
@@ -68,96 +91,80 @@ else{
 	exit;
 }
 
-function smtp_mail($to, $subject, $message, $headers = '') {{{
+class SMTPSend {
 
- 	$recipients = explode(',', $to);
-	$user				= 'from@mail.com';
-	$mailfrom		= '<from@mail.com>';
-	$pass				= 'somepassword';
-	$smtp_host	= 'ssl://smtp.gmail.com';
-	$smtp_port	= 465;
+	function smtp_mail($to, $subject, $message, $headers = '') {{{
 
-	//echo( "Sending email to: ".var_export($to,TRUE));
+		$recipients = explode(',', $to);
+		$user				= 'user@mail.com';
+		$mailfrom		= 'user@mail.com>';
+		$pass				= 'password';
+		$smtp_host	= 'ssl://smtp.gmail.com';
+		$smtp_port	= 465;
 
-	if (!($socket = fsockopen($smtp_host, $smtp_port, $errno, $errstr, 15))) {
-		//echo( "Could not connect to smtp host '$smtp_host' ($errno) ($errstr)");
-	}
+		if (!($socket = fsockopen($smtp_host, $smtp_port, $errno, $errstr, 15))) {
+			//echo( "Could not connect to smtp host '$smtp_host' ($errno) ($errstr)");
+		}
 
-	if(!server_parse($socket, '220')) { return FALSE; }
+		if(!$this->server_parse($socket, '220')) return FALSE; 
 
-	fwrite($socket, 'EHLO '.$smtp_host."\r\n");
-	//stream_socket_sendto($socket, 'EHLO '.$smtp_host."\r\n");
-	if(!server_parse($socket, '250')) { return FALSE; }
+		fwrite($socket, 'EHLO '.$smtp_host."\r\n");
+		if(!$this->server_parse($socket, '250')) return FALSE; 
 
-	fwrite($socket, 'AUTH LOGIN'."\r\n");
-	//stream_socket_sendto($socket, 'AUTH LOGIN'."\r\n");
-	if(!server_parse($socket, '334')) { return FALSE; }
+		fwrite($socket, 'AUTH LOGIN'."\r\n");
+		if(!$this->server_parse($socket, '334')) return FALSE; 
 
-	fwrite($socket, base64_encode($user)."\r\n");
-	if(!server_parse($socket, '334')) { return FALSE; }
+		fwrite($socket, base64_encode($user)."\r\n");
+		if(!$this->server_parse($socket, '334')) return FALSE; 
 
-	fwrite($socket, base64_encode($pass)."\r\n");
-	if(!server_parse($socket, '235')) { return FALSE; }
+		fwrite($socket, base64_encode($pass)."\r\n");
+		if(!$this->server_parse($socket, '235')) return FALSE; 
 
-	fwrite($socket, 'MAIL FROM: '.$mailfrom."\r\n");
-	if(!server_parse($socket, '250')) { return FALSE; }
+		fwrite($socket, 'MAIL FROM: '.$mailfrom."\r\n");
+		if(!$this->server_parse($socket, '250')) return FALSE; 
 
-	foreach ($recipients as $email) {
-		fwrite($socket, 'RCPT TO: <'.$email.'>'."\r\n");
-		if(!server_parse($socket, '250')) { return FALSE; }
-	}
+		foreach ($recipients as $email) {
+			fwrite($socket, 'RCPT TO: <'.$email.'>'."\r\n");
+			if(!$this->server_parse($socket, '250')) return FALSE; 
+		}
 
-	fwrite($socket, 'DATA'."\r\n");
-	if(!server_parse($socket, '354')) { return FALSE; }
+		fwrite($socket, 'DATA'."\r\n");
+		if(!$this->server_parse($socket, '354')) return FALSE; 
 
-	fwrite($socket, 'Subject: '.$subject."\r\n".'To: <'.implode('>, <', $recipients).'>'."\r\n".$headers."\r\n\r\n".$message."\r\n");
+		fwrite($socket, 'Subject: '.$subject."\r\n".'To: <'.implode('>, <', $recipients).'>'."\r\n".$headers."\r\n\r\n".$message."\r\n");
 
-	fwrite($socket, '.'."\r\n");
-	if(!server_parse($socket, '250')) { return FALSE; }
+		fwrite($socket, '.'."\r\n");
+		if(!$this->server_parse($socket, '250')) return FALSE; 
 
-	fwrite($socket, 'QUIT'."\r\n");
-	fclose($socket);
+		fwrite($socket, 'QUIT'."\r\n");
+		fclose($socket);
 
-	//echo( "Sent email to: ".var_export($to,TRUE));
+		return TRUE;
 
-	return TRUE;
+	}}}
 
-}}}
+	function server_parse($socket, $expected_response) {{{
 
-function server_parse($socket, $expected_response) {{{
+		$server_response = '';
+		while (substr($server_response, 3, 1) != ' ') {
+			if (!($server_response = fgets($socket, 256))) { 
+				//echo( "Couldn't get mail server response codes. Please contact the administrator.");
+				return FALSE;
+			}
+		}
 
-	$server_response = '';
-	while (substr($server_response, 3, 1) != ' ') {
-		if (!($server_response = fgets($socket, 256))) { 
-			//echo( "Couldn't get mail server response codes. Please contact the administrator.");
+		if (!(substr($server_response, 0, 3) == $expected_response)) { 
+			//echo( "Unable to send e-mail. Please contact the administrator with the following error message reported by the SMTP server: ".var_export($server_response,TRUE));        
 			return FALSE;
 		}
-	}
+		return TRUE;
 
-	if (!(substr($server_response, 0, 3) == $expected_response)) { 
-		//echo( "Unable to send e-mail. Please contact the administrator with the following error message reported by the SMTP server: ".var_export($server_response,TRUE));        
-		return FALSE;
-	}
-	return TRUE;
+	}}}
 
-}}}
+	function close() {{{
+		// Nothing to do here
+	}}}
 
-// signal handler function
-function sig_handler($signo) {{{
-
-	global $handle;
-
-	switch ($signo) {
-		case SIGTERM:
-				// handle shutdown tasks
-				unlink('/var/run/logParser.pid');
-				fclose($handle);
-			exit;
-			break;
-		default:
-			// handle all other signals
-	}
-
-}}}
+}
 
 ?>
