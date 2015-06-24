@@ -15,10 +15,37 @@ if(array_key_exists('filename',$_GET) && !empty($_GET['filename'])) {
 			$data			= pg_unescape_bytea($image[0]);
 		}
 		header('Content-Type: image/jpeg');
-		echo $data;
+		resize_photo($data);
 	}
 	pg_close($conn);
 
 }
+
+function resize_photo($photo) {{{
+
+	$width	= 480;
+	$height = 640;
+
+	// Get new dimensions
+	list($width_orig, $height_orig) = getimagesizefromstring($photo);
+
+	$ratio_orig = $width_orig/$height_orig;
+
+	if ($width/$height > $ratio_orig) {
+		$width = $height*$ratio_orig;
+	} else {
+		$height = $width/$ratio_orig;
+	}
+
+	// Resample
+	$image_p	= imagecreatetruecolor($width, $height);
+	$image		= imagecreatefromstring($photo);
+	imagecopyresampled($image_p, $image, 0, 0, 0, 0, $width, $height, $width_orig, $height_orig);
+
+	// Output
+	imagejpeg($image_p, NULL, 100); 
+
+}}}
+
 
 ?>
