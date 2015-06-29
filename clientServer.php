@@ -143,8 +143,11 @@ function child_process() {{{
 		pcntl_signal_dispatch(); // remember to call the signal dispatch to see if we have any waiting signals
 		while ($conn = stream_socket_accept($childSocket)) {
 			pcntl_signal_dispatch(); // remember to call the signal dispatch to see if we have any waiting signals
-			$stream = stream_socket_recvfrom($conn, 1500, 0, $remoteAddress);
-			syslog(LOG_WARNING, "Socket Received Stream $stream from $remoteAddress");
+			//$address	= null;
+			//$stream		= stream_socket_recvfrom($conn, 1500, 0, $address);
+			$stream		= stream_socket_recvfrom($conn, 1500);
+			$address	= stream_socket_get_name($conn,false);
+			syslog(LOG_WARNING, "Socket Received Stream $stream from $address");
 			$response = handle_request($stream);
 			//fwrite($conn, 'The local time is ' . date('n/j/Y g:i a') . "\n");
 			$response = 'The local time is ' . date('n/j/Y g:i a');
@@ -158,6 +161,7 @@ function child_process() {{{
 
 date_default_timezone_set('UTC');
 
+$timeout			= 1;
 $maxChildren	= 1;
 $path					= '/img';
 $parent				= TRUE;
@@ -201,7 +205,8 @@ if (!$server) {
 			else { 
 				$socket = @stream_socket_accept($server, $timeout);
 				if($socket) {
-					$stream = stream_socket_recvfrom($socket, 1500 , 0 , $remote);
+					$stream = stream_socket_recvfrom($socket, 1500);
+					$remote	= stream_socket_get_name($socket,true);
 					syslog(LOG_INFO,"Sending Stream to Child /tmp/internalSocket-{$childPid[$c]} from $remote");
 					$fp = stream_socket_client("unix:///tmp/internalSocket-".$childPid[$c], $errno, $errstr, 30);
 					if (!$fp) {
