@@ -5,7 +5,7 @@ $sql	= "INSERT INTO ( id , value , id ) VALUES ( '{datetime:?1}' , '{string:?2}'
 $sql	= config_parse($sql,array('2010-01-10 00:59:49' , 'value' , '1'));
 
 echo "SQL1 $sql".PHP_EOL;
-$sql = preg_replace_callback('~{( ?[a-z]+):([?a-z0-9A-Z_-]+ ?)}~','sql_match',$sql);
+$sql = preg_replace_callback('~{( ?[a-z]+):([a-z0-9A-Z: _-]+ ?)}~','sql_match',$sql);
 
 echo "SQL2 $sql".PHP_EOL;
 
@@ -39,7 +39,7 @@ function sql_match($matches) {
 			break;
 		case 'datetime':
 			if (preg_match('~^([0-9]{4})-([0-1]{2}?)-([0-3]{2}?) ?([0-9]{2}):([0-9]{2}):([0-9]{2})$~', $check, $date_matches) === 1) { 
-				return sprintf('%04d-%02d-%02d', $date_matches[1], $date_matches[2], $date_matches[3]);
+				return sprintf('%04d-%02d-%02d %02d:%02d:%02d', $date_matches[1], $date_matches[2], $date_matches[3], $date_matches[4], $date_matches[5], $date_matches[6]);
 			} 
 			return FALSE;
 			break;
