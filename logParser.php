@@ -97,7 +97,7 @@ class SMTPSend {
 
 		$recipients = explode(',', $to);
 		$user				= 'user@mail.com';
-		$mailfrom		= 'user@mail.com>';
+		$mailfrom		= '<user@mail.com>';
 		$pass				= 'password';
 		$smtp_host	= 'ssl://smtp.gmail.com';
 		$smtp_port	= 465;
