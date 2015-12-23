@@ -117,7 +117,14 @@ class PHPDaemon {
 		// loop forever
 		for (;;) {
 			pcntl_signal_dispatch(); // remember to call the signal dispatch to see if we have any waiting signals
-			$function($this->log); // Function we wish to call
+			// Check to see if its a function call 
+			if (is_string($function) && function_exists($function)) { 
+				call_user_func_array($function,array(&$this->log));
+			} 
+			// Check to see if its an anonymous function
+			else if(is_object($function) && ($function instanceof Closure)) {
+				$function($this->log); // Function we wish to call
+			} 
 			sleep($this->sleep);
 		}
 
