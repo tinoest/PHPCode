@@ -78,4 +78,38 @@ function config_parse ( $sql , $replacements ) {{{
 
 }}}
 
+function array_parse ( $config ) {{{
+
+/*
+{ { blue green red } 
+{ blue green red } 
+{ blue green red } }
+*/
+
+// {\s*.*?(?:\s*.)*.\s\}
+
+/*
+
+$value = "{ 
+{ d , a , c , b }
+{ b , d , a , c , b }
+{ a , c , b } 
+}";
+
+$values = explode(PHP_EOL, $value);
+
+print_r($values);
+
+for($i=0;$i<sizeof($values);$i++) {
+	if (preg_match('/^\{\s*.*?(?:\s*,\s*.*?)*\s*\}$/', trim($values[$i]))) {
+		$data[$i] = array_map('trim', explode(',', trim(trim($values[$i]), '{}')));
+	}
+}
+print_r($data);
+
+*/
+
+}}}
+
+
 ?>
