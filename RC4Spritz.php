@@ -23,8 +23,8 @@ function rc4Spritz($key, &$str) {{{
 
 	$j = 0;
 	for ($i = 0; $i < 256; $i++) {
-		$j			= ($j + $s[$i] + ord($key[$i % strlen($key)])) % 256;
-		$temp		= $s[$i];
+		$j	= ($j + $s[$i] + ord($key[$i % strlen($key)])) % 256;
+		$temp	= $s[$i];
 		$s[$i]	= $s[$j];
 		$s[$j]	= $temp;
 	}
@@ -32,13 +32,13 @@ function rc4Spritz($key, &$str) {{{
 	$i = $j = $k = $z = 0;
 	$w = 1;
 	for ($y = 0; $y < strlen($str); $y++) {
-		$i				= ($i + $w) % 256;
-		$j				= ($k + $s[($j + $s[$i]) % 256]) % 256;
-		$k				= ($i + $k + $s[$j]) % 256;
-		$temp			= $s[$i];
+		$i		= ($i + $w) % 256;
+		$j		= ($k + $s[($j + $s[$i]) % 256]) % 256;
+		$k		= ($i + $k + $s[$j]) % 256;
+		$temp		= $s[$i];
 		$s[$i]		= $s[$j];
 		$s[$j]		= $temp;
-		$z				= $s[($j + $s[($i + $s[($z + $k) % 256]) % 256]) % 256];
+		$z		= $s[($j + $s[($i + $s[($z + $k) % 256]) % 256]) % 256];
 		$str[$y]	= $str[$y] ^ chr($z);
 	}
 
