@@ -23,8 +23,8 @@ function rc4($key, &$str) {{{
 
 	$j = 0;
 	for ($i = 0; $i < 256; $i++) {
-		$j			= ($j + $s[$i] + ord($key[$i % strlen($key)])) % 256;
-		$temp		= $s[$i];
+		$j	= ($j + $s[$i] + ord($key[$i % strlen($key)])) % 256;
+		$temp	= $s[$i];
 		$s[$i]	= $s[$j];
 		$s[$j]	= $temp;
 	}
@@ -33,9 +33,9 @@ function rc4($key, &$str) {{{
 	$j = 0;
 	$res = '';
 	for ($k = 0; $k < strlen($str); $k++) {
-		$i				= ($i + 1) % 256;
-		$j				= ($j + $s[$i]) % 256;
-		$temp			= $s[$i];
+		$i		= ($i + 1) % 256;
+		$j		= ($j + $s[$i]) % 256;
+		$temp		= $s[$i];
 		$s[$i]		= $s[$j];
 		$s[$j]		= $temp;
 		$str[$k]	= $str[$k] ^ chr($s[($s[$i] + $s[$j]) % 256]);
