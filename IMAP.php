@@ -53,9 +53,9 @@ class IMAP
 		
 		}}}
 
-		function login($username, $pass) {{{
+		function login($username, $password) {{{
 
-			$this->send_command('LOGIN '.$username.' '.$pass);
+			$this->send_command('LOGIN '.$username.' '.$password);
 
 			if(!$this->_assumed_next_line($this->lastTag)) {
 				return FALSE;
@@ -78,17 +78,16 @@ class IMAP
 
 			$this->send_command('SEARCH ALL');
 			$response = $this->read_response($this->lastTag);
-
-			foreach($response as $id) {
-
-				if($id[0] == "S") {
-					$count = count_chars($id, 1);
-				}
-
+			if(!is_array($response) && empty($emails)) {
+				return FALSE;
 			}
 
-			return $count[32];
-		
+			$emails		= explode(' ', $response[0]);
+			unset($emails[0]);
+			$emails		= array_values($emails);
+			
+			return count($emails);
+
 		}}}
 
 		public function get_subject($msgId) {{{
