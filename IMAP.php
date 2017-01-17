@@ -1,3 +1,4 @@
+<?php
 /*
 Copyright (c) 2017, tinoest
 All rights reserved.
@@ -29,7 +30,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 This license may be viewed online at http://opensource.org/licenses/BSD-3-Clause
 */
-<?php
 class IMAP
 {
 		private $sock;
@@ -109,7 +109,7 @@ class IMAP
 
 			$this->send_command('SEARCH ALL');
 			$response = $this->read_response($this->lastTag);
-			if(!is_array($response) && empty($emails)) {
+			if(!is_array($response) || empty($response)) {
 				return FALSE;
 			}
 
@@ -137,8 +137,7 @@ class IMAP
 				}
 
 				if(!empty($tokens) && !preg_match("/FETCH/", $tokens)) {
-					$array[] = array("id" => $msgId,
-							"subject" => $tokens);
+					$array[] = array("id" => $msgId, "subject" => $tokens);
 				}
 
 			}
@@ -147,7 +146,7 @@ class IMAP
 
 		}}}
 
-		public function get_message_text($msgId="") {{{
+		public function get_message_text($msgId = "") {{{
 
 			if(empty($msgId)) {
 				return FALSE;
