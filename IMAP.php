@@ -91,9 +91,20 @@ class IMAP
 			if(!$this->_assumed_next_line($this->lastTag)) {
 				return FALSE;
 			}
+			
+			// Clear out the OK line
+			$this->read_response($this->lastTag);
 
 			return TRUE;
 		
+		}}}
+
+		function list_mailbox() {{{
+
+			$this->send_command('LIST "" "*"');
+			$response = $this->read_response($this->lastTag);
+			var_dump($response);
+
 		}}}
 
 		function select_mailbox($mailbox) {{{
@@ -240,7 +251,7 @@ class IMAP
 
 		public function read_line(&$tokens = array(), $wantedTag = '*', &$tag="") {{{
 
-			$line		= $this->_next_tagged_line($tag);
+			$this->_next_tagged_line($tag, $line);
 			$tokens = $line;
 			$tag		= $tag;
 
@@ -252,10 +263,6 @@ class IMAP
 
 		public function read_response($tag="*") {{{
 
-			if($tag == "lastTag") {
-				$tag = $this->lastTag;
-			}
-
 			$lines = array();
 			while (!$this->read_line($tokens, $tag)) {
 				$lines[] = $tokens;
@@ -265,14 +272,18 @@ class IMAP
 		
 		}}}
 
-		protected function _next_tagged_line(&$tag) {{{
+		protected function _next_tagged_line(&$tag, &$line) {{{
 			
-			$line = $this->_next_line();
+			$line		= $this->_next_line();
 
-			// seperate tag from line
-			@list($tag, $line) = explode(' ', $line, 2);
+			$parts	= preg_split('/(\s)/', $line, PREG_SPLIT_DELIM_CAPTURE);
+			if(!is_array($parts)) {
+				return FALSE;
+			}
+			$tag		= $parts[0];
+			$line		= $parts[1];
 
-			return $line;
+			return TRUE;
 
 		}}}
 
