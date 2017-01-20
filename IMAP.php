@@ -219,6 +219,10 @@ class IMAP
 				}
 			}
 
+			if(empty($return)) {
+				return false;
+			}
+
 			return mb_decode_mimeheader($return);
 		
 		}}}
