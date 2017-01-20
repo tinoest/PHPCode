@@ -55,6 +55,7 @@ class IMAP
 		function __destruct() {{{
 
 			$this->send_command('LOGOUT');
+			fclose($this->sock);
 
 		}}}
 
@@ -67,7 +68,19 @@ class IMAP
 				$this->host = "ssl://".$host;
 			}
 
-			$this->sock		= fsockopen($this->host, $this->port, $errno, $errstr);
+			if( function_exists( 'stream_socket_client' ) ) {
+				$socket	= stream_socket_client( $this->host.':'.$this->port, $errno, $errstr, 15 );
+			}
+			else {
+				$socket = fsockopen( $this->host, $this->port, $errno, $errstr, 15 ); 
+			}
+
+			if(!$socket) {
+				return FALSE;
+			}
+
+			$this->sock	= $socket;
+
 
 			if(!$this->_assumed_next_line('* OK')) {
 				return FALSE;
@@ -88,13 +101,10 @@ class IMAP
 
 			$this->send_command('LOGIN '.$username.' '.$password);
 
-			if(!$this->_assumed_next_line($this->lastTag)) {
+			if(!$this->read_response($this->lastTag)) {
 				return FALSE;
 			}
 			
-			// Clear out the OK line
-			$this->read_response($this->lastTag);
-
 			return TRUE;
 		
 		}}}
@@ -103,7 +113,8 @@ class IMAP
 
 			$this->send_command('LIST "" "*"');
 			$response = $this->read_response($this->lastTag);
-			var_dump($response);
+
+			return $response;
 
 		}}}
 
@@ -237,8 +248,19 @@ class IMAP
 				return FALSE;
 			}
 
+			//echo "DEBUG $line\n";
+
 			return $line;
 
+		}}}
+
+		protected function _wait_for_response($start) {{{
+		
+			do {
+				$line = $this->_next_line();
+			}
+			while (strpos($line, $start) === false);
+			
 		}}}
 
 		protected function _assumed_next_line($start) {{{
@@ -280,6 +302,7 @@ class IMAP
 			if(!is_array($parts)) {
 				return FALSE;
 			}
+
 			$tag		= $parts[0];
 			$line		= $parts[1];
 
@@ -288,6 +311,8 @@ class IMAP
 		}}}
 
 		protected function send_command($cmd) {{{
+
+			//echo "SEND $cmd\n";
 
 			fwrite($this->sock, 'A00'.$this->get_tag().' '.$cmd."\r\n");
 
