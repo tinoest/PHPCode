@@ -40,7 +40,7 @@ class IMAP
 		private $lastTag;
 		private $currentMailbox;
 
-		function __construct() {{{
+		public function __construct() {{{
 
 			$this->sock 					= null;
 			$this->host 					= "localhost";
@@ -52,14 +52,14 @@ class IMAP
 
 		}}}
 
-		function __destruct() {{{
+		public function __destruct() {{{
 
 			$this->send_command('LOGOUT');
 			fclose($this->sock);
 
 		}}}
 
-		function connect($host = "", $port = "", $ssl = FALSE) {{{
+		public function connect($host = "", $port = "", $ssl = false) {{{
 
 			$this->host		= $host;
 			$this->port		= $port;
@@ -76,19 +76,19 @@ class IMAP
 			}
 
 			if(!$socket) {
-				return FALSE;
+				return false;
 			}
 
 			$this->sock	= $socket;
 
 
 			if(!$this->_assumed_next_line('* OK')) {
-				return FALSE;
+				return false;
 			}
 
 		}}}
 
-		function get_tag() {{{
+		public function get_tag() {{{
 
 			$this->tag				= $this->tag + 1;
 			$this->lastTag		= "A00".$this->tag;
@@ -97,19 +97,19 @@ class IMAP
 		
 		}}}
 
-		function login($username, $password) {{{
+		public function login($username, $password) {{{
 
 			$this->send_command('LOGIN '.$username.' '.$password);
 
 			if(!$this->read_response($this->lastTag)) {
-				return FALSE;
+				return false;
 			}
 			
 			return TRUE;
 		
 		}}}
 
-		function list_mailbox() {{{
+		public function list_mailbox() {{{
 
 			$this->send_command('LIST "" "*"');
 			$response = $this->read_response($this->lastTag);
@@ -118,7 +118,7 @@ class IMAP
 
 		}}}
 
-		function select_mailbox($mailbox) {{{
+		public function select_mailbox($mailbox) {{{
 
 			$this->send_command('SELECT '.$mailbox);
 			$this->currentMailbox = $mailbox;
@@ -127,12 +127,12 @@ class IMAP
 		
 		}}}
 
-		function count_messages() {{{
+		public function count_messages() {{{
 
 			$this->send_command('SEARCH ALL');
 			$response = $this->read_response($this->lastTag);
 			if(!is_array($response) || empty($response)) {
-				return FALSE;
+				return false;
 			}
 
 			$emails		= explode(' ', $response[0]);
@@ -146,7 +146,7 @@ class IMAP
 		public function get_subject($msgId) {{{
 
 			if(empty($msgId)) {
-				return FALSE;
+				return false;
 			}
 
 			$this->fetch($msgId." BODY[HEADER.FIELDS (subject)]");
@@ -171,7 +171,7 @@ class IMAP
 		public function get_message_text($msgId = "") {{{
 
 			if(empty($msgId)) {
-				return FALSE;
+				return false;
 			}
 
 			$this->fetch($msgId." BODY[TEXT]");
@@ -196,7 +196,7 @@ class IMAP
 		public function get_to($msgId = "") {{{
 
 			if(empty($msgId)) {
-				return FALSE;
+				return false;
 			}
 
 			$this->fetch($msgId." BODY[HEADER.FIElDS (To)]");
@@ -214,7 +214,7 @@ class IMAP
 		public function get_from($msgId = "") {{{
 
 			if(empty($msgId)) {
-				return FALSE;
+				return false;
 			}
 
 			$this->fetch($msgId." BODY[HEADER.FIElDS (From)]");
@@ -225,11 +225,15 @@ class IMAP
 				}
 			}
 
+			if(empty($return)) {
+				return false;
+			}
+
 			return mb_decode_mimeheader($return);
 		
 		}}}
 
-		private function fetch($command, $param = FALSE) {{{
+		private function fetch($command, $param = false) {{{
 			
 			if(!$param) {
 				$this->send_command('FETCH '.$command);
@@ -244,8 +248,8 @@ class IMAP
 			
 			$line = @fgets($this->sock);
 			
-			if ($line === FALSE) {
-				return FALSE;
+			if ($line === false) {
+				return false;
 			}
 
 			//echo "DEBUG $line\n";
@@ -300,7 +304,7 @@ class IMAP
 
 			$parts	= preg_split('/(\s)/', $line, PREG_SPLIT_DELIM_CAPTURE);
 			if(!is_array($parts)) {
-				return FALSE;
+				return false;
 			}
 
 			$tag		= $parts[0];
