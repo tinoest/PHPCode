@@ -195,38 +195,28 @@ class IMAP
 
 		public function get_to($msgId = "") {{{
 
-			if(empty($msgId)) {
-				return false;
-			}
+			return $this->get_header_field($msgId, 'BODY[HEADER.FIElDS (To)]');
 
-			$this->fetch($msgId." BODY[HEADER.FIElDS (To)]");
-
-			while(!$this->read_line($tokens, $this->lastTag)) {
-				if(!isset($return) && !preg_match('/FETCH/', $tokens)) {
-					$return = htmlspecialchars($tokens);
-				}
-			}
-
-			return mb_decode_mimeheader($return);
-		
 		}}}
 
 		public function get_from($msgId = "") {{{
 
+			return $this->get_header_field($msgId, 'BODY[HEADER.FIElDS (From)]');
+	
+		}}}
+
+		private function get_header_field($msgId = "", $headerField) {{{
+
 			if(empty($msgId)) {
 				return false;
 			}
 
-			$this->fetch($msgId." BODY[HEADER.FIElDS (From)]");
+			$this->fetch($msgId.' '.$headerField);
 
 			while(!$this->read_line($tokens, $this->lastTag)) {
 				if(!isset($return) && !preg_match('/FETCH/', $tokens)) {
 					$return = htmlspecialchars($tokens);
 				}
-			}
-
-			if(empty($return)) {
-				return false;
 			}
 
 			return mb_decode_mimeheader($return);
